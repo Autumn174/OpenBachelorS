@@ -27,7 +27,7 @@ async def u8_user_v1_getToken(request: Request):
         "result": 0,
         "captcha": {},
         "error": "",
-        "uid": "1",
+        "uid": "0001",
         "channelUid": "123456789",
         "token": code,
         "isGuest": 0,

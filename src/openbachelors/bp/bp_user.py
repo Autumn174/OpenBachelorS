@@ -1,4 +1,5 @@
 import json
+from time import time
 
 from fastapi import APIRouter
 from fastapi import Request
@@ -185,5 +186,113 @@ async def user_useRenameCard(player_data, request: Request):
 
     response = {
         "result": 0,
+    }
+    return response
+
+
+@router.post("/user/bindBirthday")
+@player_data_decorator
+async def user_bindBirthday(player_data, request: Request):
+    request_json = await request.json()
+    if "birthday" not in player_data["status"]:
+        player_data["user"]["status"]["birthday"] = {}
+    player_data["status"]["birthday"]["month"] = request_json["month"]
+    player_data["status"]["birthday"]["day"] = request_json["day"]
+
+    response = {
+        "playerDataDelta": {
+            "modified": {
+                "status":{
+                    "birthday": {
+                        "month": request_json["month"],
+                        "day": request_json["day"]
+                    }
+                }
+            },
+            "deleted": {}
+        }
+    }
+    return response
+
+
+@router.post("/user/exchangeDiamondShard")
+@player_data_decorator
+async def exchangeDiamondShard(player_data, request: Request):
+    request_json = await request.json()
+    # debug code
+    # print(request.data)
+
+    use_count = request_json["count"]
+    user_androidDiamond = player_data["status"]["androidDiamond"]
+
+    if user_androidDiamond < use_count:
+        return {
+            "result": 1,
+            "errMsg": "剩余源石无法兑换合成玉"
+        }
+    else:
+        player_data["status"]["androidDiamond"] -= use_count
+        player_data["status"]["diamondShard"] += use_count * 180
+        player_data["status"]["iosDiamond"] = player_data["status"]["androidDiamond"]
+
+    response = {
+        "playerDataDelta": {
+            "modified": {
+                "androidDiamond": player_data["status"]["androidDiamond"],
+                "iosDiamond": player_data["status"]["iosDiamond"],
+                "diamondShard": player_data["status"]["diamondShard"]
+            },
+            "deleted": {}
+        }
+    }
+
+    return response
+
+
+@router.post("/user/buyAp")
+@player_data_decorator
+async def exchangeDiamondShard(player_data, request: Request):
+    request_json = await request.json()
+
+    now_time = round(time())
+
+    # 计算可增加的 AP
+    add_ap = (now_time - player_data["status"]["lastApAddTime"]) // 360
+
+    if player_data["status"]["ap"] < player_data["status"]["maxAp"]:
+        if player_data["status"]["ap"] + add_ap >= player_data["status"]["maxAp"]:
+            player_data["status"]["ap"] = player_data["status"]["maxAp"]
+            player_data["status"]["lastApAddTime"] = now_time
+        elif add_ap != 0:
+            # 增加 AP 时，限制单次增加不超过 135
+            add_ap = min(add_ap, 135)
+            player_data["status"]["ap"] += add_ap
+            player_data["status"]["lastApAddTime"] = now_time
+
+    # 消耗钻石并增加 maxAp 的 AP
+    player_data["status"]["androidDiamond"] -= 1
+    player_data["status"]["iosDiamond"] = player_data["status"]["androidDiamond"]
+
+    # 增加 AP 时检查限制
+    max_ap_to_add = player_data["status"]["maxAp"]
+    max_ap_to_add = min(max_ap_to_add, 135)  # 限制单次增加最大为 135
+    player_data["status"]["ap"] += max_ap_to_add
+
+    player_data["status"]["lastApAddTime"] = now_time
+    player_data["status"]["buyApRemainTimes"] = player_data["status"]["buyApRemainTimes"]
+
+    response = {
+        "playerDataDelta": {
+            "deleted": {},
+            "modified": {
+                "status": {
+                    "androidDiamond": player_data["status"]["androidDiamond"],
+                    "iosDiamond": player_data["status"]["iosDiamond"],
+                    "ap": player_data["status"]["ap"],
+                    "lastApAddTime": player_data["status"]["lastApAddTime"],
+                    "buyApRemainTimes": player_data["status"]["buyApRemainTimes"]
+                }
+            }
+        }
     }
     return response

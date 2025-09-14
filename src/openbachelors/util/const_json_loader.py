@@ -116,7 +116,7 @@ class LazyLoadedConstJson(ConstJson):
 
 
 class ConstJsonLoader:
-    TARGET_DIR_LST = ["conf", "res/excel", "data"]
+    TARGET_DIR_LST = ["conf", "res/excel", "res/shop", "data"]
 
     def __init__(self):
         self.const_json_dict = {}
